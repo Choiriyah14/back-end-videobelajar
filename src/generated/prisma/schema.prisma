@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Tutor {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  profileImage String?
+  skills       String
+  description  String
+  createAt     DateTime @default(now())
+  updateAt     DateTime @updatedAt
+}
