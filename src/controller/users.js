@@ -17,32 +17,35 @@ const userRegister = async (req, res) => {
     const { username, fullName, email, password } = req.body;
     const verificationToken = uuidv4();
 
+    if (!username?.trim() || !fullName?.trim() || !email?.trim() || !password?.trim()) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     if (!validator.isEmail(email)) {
-        return res.status(400).json({ message: "Please enter a valid email address" });
+      return res.status(400).json({ message: "Please enter a valid email address" });
     }
 
     if (!validator.isStrongPassword(password)) {
-        return res.status(400).json({ message: "Password must include symbols and numbers" });
+      return res.status(400).json({ message: "Password must include uppercase, number, and symbol" });
     }
 
     if (username.length < 3) {
-        return res.status(400).json({ message: "Username must be at least three characters" });
+      return res.status(400).json({ message: "Username must be at least 3 characters" });
     }
 
     if (fullName.length < 3) {
-        return res.status(400).json({ message: "Fullname should contain three characters minimum" });
+      return res.status(400).json({ message: "Full name must be at least 3 characters" });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
-
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
 
     const existingUsername = await prisma.user.findUnique({ where: { username } });
-    if (existingUsername) {
-      return res.status(400).json({ message: "Username already taken" });
-    }
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -60,9 +63,9 @@ const userRegister = async (req, res) => {
     await sendEmail(email, verificationToken);
 
     return res.status(201).json({ message: "User registered. Please verify your email." });
-  } catch (error) {
+      } catch (error) {
     console.error("Registration error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+      return res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -120,10 +123,10 @@ const verificationEmail = async (req, res) => {
     });
 
     return res.status(200).json({ message: "Email verified successfully" });
-  } catch (error) {
+      } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
-  }
+      }
 };
 
     async function sendEmail(email, token) {
@@ -136,13 +139,18 @@ const verificationEmail = async (req, res) => {
             },
     });
 
-    const verificationLink = `http://localhost:4000/api/user/verify/${token}`;
+    const verificationLink = `${process.env.BASE_URL}/api/user/verify/${token}`;
 
     await transporter.sendMail({
       to: email,
       from: process.env.EMAIL_USER,
       subject: 'Verify Your Video Belajar Account',
-      text: `Hi there!\n\nThank you for signing up at Video Belajar.\nPlease verify your account by clicking the link below:\n${verificationLink}`,
+      html: `
+        <h3>Hi there!</h3>
+        <p>Thank you for signing up at Video Belajar.</p>
+        <p>Please verify your account by clicking the link below:</p>
+        <a href="${verificationLink}">${verificationLink}</a>
+      `,
     });
 
     console.log("Email sent successfully");
@@ -151,8 +159,34 @@ const verificationEmail = async (req, res) => {
   }
 };
 
+const uploadData = async (req, res) => {
+  try {
+    const { filename, path, size } = req.file;
+
+    const uploadedFile = await prisma.upload.create({
+      data: {
+        filename,
+        path,
+        size: Number(size), 
+      },
+    });
+
+    res.json({
+      status: "success",
+      data: uploadedFile,
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to upload file",
+    });
+  }
+};
+
 export {
     userRegister,
     userLogin,
     verificationEmail,
+    uploadData,
 }
